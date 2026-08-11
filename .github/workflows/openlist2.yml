@@ -11,13 +11,16 @@ name: Make Openlist2 Run File
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       
       - name: Fetch latest release tag from openlist2
         id: fetch_latest_tag

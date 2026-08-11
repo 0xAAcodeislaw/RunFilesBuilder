@@ -16,13 +16,16 @@ on:
           required: false
           default: 'packages-24.10'  
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
     
       - name: set PACKAGE_VERSION
         run: |
@@ -73,7 +76,7 @@ jobs:
 
           # 下载固定的 luci-app-adguardhome-all.ipk 到该目录 这版本luci界面最好用 而且每次变化的仅仅是内核
             curl -L -o "$ARCH/luci-app-adguardhome-all.ipk" \
-              "https://github.com/wukongdaily/RunFilesBuilder/releases/download/AdGuardHome_v0.107.55/luci-app-adguardhome-all.ipk"
+              "https://github.com/${{ github.repository }}/releases/download/AdGuardHome_v0.107.55/luci-app-adguardhome-all.ipk"
 
             echo "==> Downloaded for $ARCH:"
             ls -lh "$ARCH/luci-app-adguardhome-all.ipk"

@@ -10,13 +10,16 @@ name: Make Argon Theme run files
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   make-run:
     runs-on: ubuntu-22.04
 
     steps:
       - name: 📥 Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: 📦 安装 makeself 工具
         run: sudo apt-get update && sudo apt-get install -y makeself curl

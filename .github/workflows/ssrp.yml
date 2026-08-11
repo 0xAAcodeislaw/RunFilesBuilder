@@ -15,13 +15,16 @@ on:
         required: false
         default: 'packages-24.10'  
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-22.04
    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Create directories for x86_64 and a53 and set PACKAGE_VERSION
         run: |
