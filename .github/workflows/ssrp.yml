@@ -24,7 +24,7 @@ jobs:
    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Create directories for x86_64 and a53 and set PACKAGE_VERSION
         run: |
@@ -233,7 +233,7 @@ jobs:
           echo "tag_name=$TODAY" >> $GITHUB_ENV
           
       - name: Upload all .run files to GitHub Release
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: "ShadowsocksPlus+"
           name: SSRP-${{ env.ssrp_version }}

@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       
       - name: Fetch latest release tag from mosdns
         id: fetch_latest_tag
@@ -126,7 +126,7 @@ jobs:
 
     
       - name: Upload run files as release assets
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.LATEST_TAG }}
           name: "mosdns-${{ env.LATEST_TAG }}"

@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       
       - name: Fetch latest release tag from Passwall2
         id: fetch_latest_tag
@@ -122,7 +122,7 @@ jobs:
           cat release_notes.md
 
       - name: Generate new tag & release
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -132,7 +132,7 @@ jobs:
           body_path: release_notes.md
 
       - name: Upload run files as release assets
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.LATEST_TAG }}
           name: "PassWall2-${{ env.LATEST_TAG }}"

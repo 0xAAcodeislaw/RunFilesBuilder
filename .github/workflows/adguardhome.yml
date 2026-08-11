@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
     
       - name: set PACKAGE_VERSION
         run: |
@@ -135,7 +135,7 @@ jobs:
           cat ${{ github.workspace }}/info1.md
 
       - name: Upload run files as release assets
-        uses: softprops/action-gh-release@v2.1.0
+        uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: AdGuardHome_${{ env.LATEST_TAG }}
           name: "AdGuardHome-${{ env.LATEST_TAG }}"
