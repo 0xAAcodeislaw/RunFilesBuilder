@@ -25,6 +25,12 @@ https://github.com/wkccd/CloudRunFilesBuilder/releases
 >> iStoreOS 可以在iStore商店手动安装<br>
 >> ImmortalWrt或者其他OpenWrt 可下载后 使用 `sh xxx.run `来安装<br>
 >> 使用 `sh xxx.run --target dir --noexec ` 只解压到dir目录 不执行安装
+
+### 版本跟踪
+
+`shell/` 下需要下载 ImmortalWrt 软件包的工作流会自动解析 `24.10.x` 系列的最新稳定补丁版，默认使用官方包源；也可以在本地或工作流中通过 `IMMORTALWRT_RELEASE`、`IMMORTALWRT_SERIES` 和 `IMMORTALWRT_MIRROR` 覆盖。当前安装脚本使用 `opkg` 安装 `.ipk`，因此不会直接切换到已改用 `.apk/apk` 包格式的 25.12 系列。
+
+仓库还包含 `Sync upstream changes` 工作流，每天从上游 `wukongdaily/RunFilesBuilder` 的 `master` 拉取更新，也支持手动运行；如果上游与本地修复产生冲突，工作流会停止并保留主分支不变。
 > <img src="https://github.com/user-attachments/assets/3f5dabba-1efa-4e67-bf5b-86a27c114902" height=40>
 
 ## 实现原理和操作指南
@@ -73,5 +79,4 @@ wget -qO imm.sh https://cafe.cpolar.top/wkdaily/zero3/raw/branch/main/zero3/imm.
 > > 【引用】https://github.com/Openwrt-Passwall/openwrt-passwall<br>
 > > 【引用】https://github.com/Openwrt-Passwall/openwrt-passwall2<br>
 > > 【引用】https://github.com/vernesong/OpenClash<br>
-
 

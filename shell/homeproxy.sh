@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/immortalwrt.sh"
+
 declare -A PLATFORMS=(
-  ["x86_64"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/x86_64"
-  ["aarch64_generic"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/aarch64_generic"
-  ["aarch64_cortex-a53"]="https://mirrors.cernet.edu.cn/immortalwrt/releases/24.10.5/packages/aarch64_cortex-a53"
+  ["x86_64"]="${IMMORTALWRT_PACKAGE_ROOT}/x86_64"
+  ["aarch64_generic"]="${IMMORTALWRT_PACKAGE_ROOT}/aarch64_generic"
+  ["aarch64_cortex-a53"]="${IMMORTALWRT_PACKAGE_ROOT}/aarch64_cortex-a53"
 )
 
 # 各类包对应的目录

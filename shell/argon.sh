@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
+
+source "$(dirname "${BASH_SOURCE[0]}")/immortalwrt.sh"
+
 # 平台基础URL
 declare -A PLATFORMS=(
-  ["x86_64"]="https://mirrors.pku.edu.cn/immortalwrt/releases/24.10.4/packages/x86_64"
-  ["aarch64_generic"]="https://mirrors.pku.edu.cn/immortalwrt/releases/24.10.4/packages/aarch64_generic"
+  ["x86_64"]="${IMMORTALWRT_PACKAGE_ROOT}/x86_64"
+  ["aarch64_generic"]="${IMMORTALWRT_PACKAGE_ROOT}/aarch64_generic"
 )
 
 # 各类包对应的目录
