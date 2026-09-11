@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 BASE_URL="https://repo.istoreos.com/repo/all/store/"
 TARGET_DIR="store"
@@ -16,7 +16,7 @@ packages=(
 
 # 下载页面内容
 echo "[+] Fetching index page..."
-page_content=$(curl -s "$BASE_URL")
+page_content=$(curl --fail --silent --show-error --location "$BASE_URL")
 
 # 从页面中提取所有 .ipk 文件名
 echo "[+] Parsing .ipk links..."
@@ -24,10 +24,10 @@ all_ipks=$(echo "$page_content" | grep -oP 'href="\K[^"]+\.ipk')
 
 # 根据包名前缀过滤并下载
 for prefix in "${packages[@]}"; do
-  match=$(echo "$all_ipks" | grep "^${prefix}_" | head -n1)
+  match=$(echo "$all_ipks" | grep "^${prefix}_" | sort -V | tail -n1 || true)
   if [ -n "$match" ]; then
     echo "[+] Downloading $match ..."
-    curl -s -L -o "$TARGET_DIR/$match" "${BASE_URL}${match}"
+    curl --fail --location --retry 3 -o "$TARGET_DIR/$match" "${BASE_URL}${match}"
   else
     echo "[!] Warning: No .ipk found for $prefix"
   fi

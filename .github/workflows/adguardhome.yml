@@ -38,26 +38,31 @@ jobs:
       - name: Fetch latest release tag from AdGuardHome
         id: fetch_latest_tag
         run: |
-          latest_tag=$(curl -s https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest | jq -r '.tag_name')
+          latest_tag=$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest \
+            | jq -er '.tag_name // empty')
+          test -n "$latest_tag"
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
-          # https://github.com/AdguardTeam/AdGuardHome/releases/download/v0.107.55/AdGuardHome_linux_arm64.tar.gz
 
       - name: Clone makeself repository
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest AdGuardHome files
         run: |
-          curl -LO "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_armv7.tar.gz"
+          curl --fail --location --retry 3 -o AdGuardHome_linux_armv7.tar.gz \
+            "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_armv7.tar.gz"
           tar --one-top-level=AdGuardHome_aarch32 -xvzf AdGuardHome_linux_armv7.tar.gz
           echo "AdGuardHome_aarch32 List"
           ls AdGuardHome_aarch32
           
-          curl -LO "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_arm64.tar.gz"
+          curl --fail --location --retry 3 -o AdGuardHome_linux_arm64.tar.gz \
+            "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_arm64.tar.gz"
           tar --one-top-level=AdGuardHome_aarch64 -xvzf AdGuardHome_linux_arm64.tar.gz
           echo "AdGuardHome_aarch64 List"
           ls AdGuardHome_aarch64
           
-          curl -LO "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_amd64.tar.gz"
+          curl --fail --location --retry 3 -o AdGuardHome_linux_amd64.tar.gz \
+            "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_amd64.tar.gz"
           tar --one-top-level=AdGuardHome_x86_64 -xvzf AdGuardHome_linux_amd64.tar.gz
           echo "AdGuardHome_x86_64 List"
           ls AdGuardHome_x86_64
@@ -65,7 +70,7 @@ jobs:
       - name: Download luci-app-adguardhome IPK files
         run: | 
           ARCHITECTURES=(
-          "AdGuardHome_aarch32=https://dl.openwrt.ai/$PACKAGE_VERSION/arm_cortex-a7/kiddin9/"
+          "AdGuardHome_aarch32=https://dl.openwrt.ai/$PACKAGE_VERSION/arm_cortex-a7_neon-vfpv4/kiddin9/"
           "AdGuardHome_aarch64=https://dl.openwrt.ai/$PACKAGE_VERSION/aarch64_cortex-a53/kiddin9/"
           "AdGuardHome_x86_64=https://dl.openwrt.ai/$PACKAGE_VERSION/x86_64/kiddin9/")
 
@@ -74,13 +79,17 @@ jobs:
             TARGET_URL=$(echo "$ARCH_MAPPING" | cut -d= -f2)
             mkdir -p "$ARCH"
 
-          # 下载固定的 luci-app-adguardhome-all.ipk 到该目录 这版本luci界面最好用 而且每次变化的仅仅是内核
-            curl -L -o "$ARCH/luci-app-adguardhome-all.ipk" \
-              "https://github.com/${{ github.repository }}/releases/download/AdGuardHome_v0.107.55/luci-app-adguardhome-all.ipk"
+            package_name=$(curl --fail --silent --show-error --location "$TARGET_URL" \
+              | grep -oP 'href="\Kluci-app-adguardhome_[^"]+\.ipk' \
+              | sort -V | tail -n 1)
+            test -n "$package_name"
+            curl --fail --location --retry 3 -o "$ARCH/$package_name" \
+              "${TARGET_URL}${package_name}"
+            ar t "$ARCH/$package_name" | grep -qx debian-binary
 
             echo "==> Downloaded for $ARCH:"
-            ls -lh "$ARCH/luci-app-adguardhome-all.ipk"
-            file "$ARCH/luci-app-adguardhome-all.ipk"
+            ls -lh "$ARCH/$package_name"
+            file "$ARCH/$package_name"
             echo ""
           done
  

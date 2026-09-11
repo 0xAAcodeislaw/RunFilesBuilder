@@ -6,7 +6,7 @@
 # Blog: wkdaily.cpolar.cn
 #=================================================
 
-name: Make nikki run files for 23.05
+name: Make nikki run files 24.10
 
 on:
   workflow_dispatch:
@@ -25,18 +25,26 @@ jobs:
       - name: Fetch latest release tag from nikki
         id: fetch_latest_tag
         run: |
-          latest_tag=$(curl -s https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest | jq -r '.tag_name')
+          latest_tag=$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest \
+            | jq -er '.tag_name // empty')
+          test -n "$latest_tag"
           
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
-          # https://github.com/nikkinikki-org/OpenWrt-nikki/releases/download/v1.17.5/nikki_aarch64_cortex-a53-openwrt-23.05.tar.gz
 
       - name: Clone makeself repository
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest nikki files
         run: |
-          curl -LO $(curl -s https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest | grep -oP '"browser_download_url":\s*".*nikki_aarch64_cortex-a53-openwrt-24.10.tar.gz"' | cut -d '"' -f 4)
-          curl -LO $(curl -s https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest | grep -oP '"browser_download_url":\s*".*nikki_x86_64-openwrt-24.10.tar.gz"' | cut -d '"' -f 4)
+          release_json=$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest)
+          a53_url=$(echo "$release_json" | jq -er \
+            '.assets[] | select(.name == "nikki_aarch64_cortex-a53-openwrt-24.10.tar.gz") | .browser_download_url')
+          x86_url=$(echo "$release_json" | jq -er \
+            '.assets[] | select(.name == "nikki_x86_64-openwrt-24.10.tar.gz") | .browser_download_url')
+          curl --fail --location --retry 3 -O "$a53_url"
+          curl --fail --location --retry 3 -O "$x86_url"
           tar --one-top-level=nikki_aarch64_cortex-a53-openwrt-24.10 -xvzf nikki_aarch64_cortex-a53-openwrt-24.10.tar.gz
           tar --one-top-level=nikki_x86_64-openwrt-24.10 -xvzf nikki_x86_64-openwrt-24.10.tar.gz
 

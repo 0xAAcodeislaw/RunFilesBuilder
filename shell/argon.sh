@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/immortalwrt.sh"
 
@@ -47,9 +47,9 @@ for platform in "${!PLATFORMS[@]}"; do
     # 从 Filename 字段中匹配 ipk
     FILE=$(awk -v kw="$keyword" '
       $1=="Filename:" && $2 ~ "^"kw".*\\.ipk$" {
-        print $2; exit
+        print $2
       }
-    ' "$PKG_INDEX")
+    ' "$PKG_INDEX" | sort -V | tail -n 1)
 
     if [ -n "$FILE" ]; then
       echo "⬇️ 正在下载: $FILE"
@@ -63,6 +63,7 @@ for platform in "${!PLATFORMS[@]}"; do
       fi
     else
       echo "❌ 未找到匹配: $keyword"
+      exit 1
     fi
   done
 done

@@ -25,7 +25,10 @@ jobs:
       - name: Fetch latest release tag from openlist2
         id: fetch_latest_tag
         run: |
-          latest_tag=$(curl -s https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest | jq -r '.tag_name')
+          latest_tag=$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest \
+            | jq -er '.tag_name // empty')
+          test -n "$latest_tag"
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
           
       - name: Clone makeself repository
@@ -33,9 +36,14 @@ jobs:
 
       - name: Download latest openlist2 files
         run: |
-          # 下载最新 release 的两个架构包
-          curl -LO $(curl -s https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest | grep -oP '"browser_download_url":\s*".*openwrt-24.10-aarch64_cortex-a53.tar.gz"' | cut -d '"' -f 4) 
-          curl -LO $(curl -s https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest | grep -oP '"browser_download_url":\s*".*openwrt-24.10-x86_64.tar.gz"' | cut -d '"' -f 4)
+          release_json=$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest)
+          a53_url=$(echo "$release_json" | jq -er \
+            '.assets[] | select(.name == "openwrt-24.10-aarch64_cortex-a53.tar.gz") | .browser_download_url')
+          x86_url=$(echo "$release_json" | jq -er \
+            '.assets[] | select(.name == "openwrt-24.10-x86_64.tar.gz") | .browser_download_url')
+          curl --fail --location --retry 3 -O "$a53_url"
+          curl --fail --location --retry 3 -O "$x86_url"
           # 解压并分别重命名 packages_ci 目录
           tar -xvzf *aarch64_cortex-a53.tar.gz
           mv packages_ci openlist2_aarch64_cortex-a53
