@@ -85,7 +85,7 @@ jobs:
             test -n "$package_name"
             curl --fail --location --retry 3 -o "$ARCH/$package_name" \
               "${TARGET_URL}${package_name}"
-            ar t "$ARCH/$package_name" | grep -qx debian-binary
+            tar -tzf "$ARCH/$package_name" | grep -qx './debian-binary'
 
             echo "==> Downloaded for $ARCH:"
             ls -lh "$ARCH/$package_name"
