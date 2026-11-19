@@ -125,7 +125,7 @@ jobs:
 
       - name: Print release notes
         run: |
-          cat ${{ github.workspace }}/info.md
+          cat ${{ github.workspace }}/momo.md
 
       - name: Generate new tag & release
         uses: softprops/action-gh-release@v3.0.2
