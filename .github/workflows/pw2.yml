@@ -11,6 +11,10 @@ name: NEW Make Passwall2 run files
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "10 4 * * *"
+
 permissions:
   contents: write
 
@@ -31,10 +35,22 @@ jobs:
           test -n "$latest_tag"
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
+      - name: Skip build if passwall2 release assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="passwall2-${{ env.LATEST_TAG }}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "passwall2_x86_64_${{ env.LATEST_TAG }}.run"; then
+            echo "$TAG 已包含 passwall2_x86_64_${{ env.LATEST_TAG }}.run，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Clone makeself repository
+        if: env.SKIP_BUILD != 'true'
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest Passwall2 files
+        if: env.SKIP_BUILD != 'true'
         run: |
           mkdir -p downloads
           cd downloads
@@ -65,6 +81,7 @@ jobs:
           curl --fail --location --retry 3 -O "$zh_url"
 
       - name: Organize files for x86_64
+        if: env.SKIP_BUILD != 'true'
         run: |
           mkdir -p passwall_x86_64/depends passwall_x86_64/main
           unzip downloads/passwall_packages_ipk_x86_64.zip -d passwall_x86_64/depends
@@ -72,6 +89,7 @@ jobs:
           cp downloads/luci-*.ipk passwall_x86_64/main/
 
       - name: Organize files for aarch64_cortex-a53
+        if: env.SKIP_BUILD != 'true'
         run: |
           mkdir -p passwall_aarch64/depends passwall_aarch64/main
           unzip downloads/passwall_packages_ipk_aarch64_cortex-a53.zip -d passwall_aarch64/depends
@@ -79,6 +97,7 @@ jobs:
           cp downloads/luci-*.ipk passwall_aarch64/main/
 
       - name: Create install.sh scripts
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat <<EOF > passwall_x86_64/install.sh
           #!/bin/sh
@@ -98,49 +117,57 @@ jobs:
           cp passwall_x86_64/install.sh passwall_aarch64/install.sh
 
       - name: Move passwall2 directories to makeself
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv passwall_x86_64 makeself/
           mv passwall_aarch64 makeself/
 
       - name: Create self-extracting packages
+        if: env.SKIP_BUILD != 'true'
         run: |
           cd makeself
           ./makeself.sh passwall_x86_64/ passwall2_x86_64_${{ env.LATEST_TAG }}.run "by github action" ./install.sh
           ./makeself.sh passwall_aarch64/ passwall2_aarch64_a53_${{ env.LATEST_TAG }}.run "by github action" ./install.sh
 
       - name: Check file sizes
+        if: env.SKIP_BUILD != 'true'
         run: |
           ls -lh makeself/passwall2*.run
 
       - name: Preparing release name
+        if: env.SKIP_BUILD != 'true'
         run: |
           release_name=$(TZ="Asia/Shanghai" date +'%Y-%m-%d %H:%M Build')
           echo "RELEASE_NAME=$release_name" >> $GITHUB_ENV
 
       - name: Fetch latest release details
+        if: env.SKIP_BUILD != 'true'
         id: fetch_release_details
         run: |
           extra_content="![Github](https://img.shields.io/badge/Passwall2.run-123456?logo=github&logoColor=fff&labelColor=green&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/${{ env.LATEST_TAG }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
           echo -e "$extra_content" > release_notes.md
 
       - name: Print release notes
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat release_notes.md
 
       - name: Generate new tag & release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.LATEST_TAG }}
+          tag_name: passwall2-${{ env.LATEST_TAG }}
           target_commitish: ${{ github.ref_name }}
           prerelease: false
           body_path: release_notes.md
 
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
-          tag_name: ${{ env.LATEST_TAG }}
+          tag_name: passwall2-${{ env.LATEST_TAG }}
           name: "PassWall2-${{ env.LATEST_TAG }}"
           files: makeself/passwall2*.run
           token: ${{ secrets.GITHUB_TOKEN }}

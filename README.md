@@ -31,6 +31,8 @@
 `shell/` 下需要下载 ImmortalWrt 软件包的工作流会自动解析 `24.10.x` 系列的最新稳定补丁版，默认使用官方包源；也可以在本地或工作流中通过 `IMMORTALWRT_RELEASE`、`IMMORTALWRT_SERIES` 和 `IMMORTALWRT_MIRROR` 覆盖。当前安装脚本使用 `opkg` 安装 `.ipk`，因此不会直接切换到已改用 `.apk/apk` 包格式的 25.12 系列。
 
 仓库还包含 `Sync upstream changes` 工作流，每天从上游 `wukongdaily/RunFilesBuilder` 的 `master` 拉取更新，也支持手动运行；如果上游与本地修复产生冲突，工作流会停止并保留主分支不变。
+
+所有构建工作流每日错峰定时构建（UTC 04:00–06:10），并自动去重：检测到该版本的 `.run` 产物已在 Releases 中发布时直接跳过本次构建。Passwall 与 Passwall2 的 release tag 已分别加 `passwall-` / `passwall2-` 前缀，避免两家上游发布相同版本号时互相覆盖。如需强制重建同一版本，先删除对应 release（或其中的 `.run` 资产）再手动触发。25.12/apk 包格式的兼容规划见 [APK-25.12-PLAN.md](APK-25.12-PLAN.md)。
 > <img src="https://github.com/user-attachments/assets/3f5dabba-1efa-4e67-bf5b-86a27c114902" height=40>
 
 ## 实现原理和操作指南

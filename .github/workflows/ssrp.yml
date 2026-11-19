@@ -15,6 +15,10 @@ on:
         required: false
         default: 'packages-24.10'  
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "10 5 * * *"
+
 permissions:
   contents: write
 
@@ -201,17 +205,29 @@ jobs:
           done
           echo "版本号是：${ssrp_version}"
 
-      - name: Create install.sh 
+      - name: Skip build if SSRP assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "ShadowsocksPlus+" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "ssrp_x86_64-${{ env.ssrp_version }}.run"; then
+            echo "SSRP ${{ env.ssrp_version }} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Create install.sh
+        if: env.SKIP_BUILD != 'true'
         run: |
             echo -e "#!/bin/sh\n\nopkg update\nif [ \$? -ne 0 ]; then\n    echo \"update failed\"\n    exit 1\nfi\nopkg install depends/*.ipk --force-depends\nopkg install *.ipk --force-depends" > x86_64/install.sh
             chmod +x x86_64/install.sh
             cp x86_64/install.sh a53/
 
       - name: Clone makeself repo
+        if: env.SKIP_BUILD != 'true'
         run: |
           git clone https://github.com/megastep/makeself.git
 
       - name: Change Dir
+        if: env.SKIP_BUILD != 'true'
         run: |
             mv -f x86_64/ makeself/
             mv -f a53/ makeself/
@@ -220,6 +236,7 @@ jobs:
 
       
       - name: Create self-extracting archives
+        if: env.SKIP_BUILD != 'true'
         run: |
             cd makeself
             ./makeself.sh x86_64/ ssrp_x86_64-${ssrp_version}.run "by github action" ./install.sh
@@ -227,12 +244,14 @@ jobs:
                 
       
       - name: Set tag name
+        if: env.SKIP_BUILD != 'true'
         id: vars
         run: |
           TODAY=$(date -u -d '+8 hour' +'%Y-%m-%d')
           echo "tag_name=$TODAY" >> $GITHUB_ENV
           
       - name: Upload all .run files to GitHub Release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: "ShadowsocksPlus+"

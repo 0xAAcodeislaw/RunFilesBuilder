@@ -11,6 +11,10 @@ name: Make MosDNS run files
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "40 4 * * *"
+
 permissions:
   contents: write
 
@@ -32,10 +36,21 @@ jobs:
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
        
 
+      - name: Skip build if mosdns release assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ env.LATEST_TAG }}" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "mosdns_${{ env.LATEST_TAG }}_x86_64.run"; then
+            echo "mosdns ${{ env.LATEST_TAG }} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Clone makeself repository
+        if: env.SKIP_BUILD != 'true'
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest mosdns files
+        if: env.SKIP_BUILD != 'true'
         run: |
           echo "Downloading MosDNS $LATEST_TAG 24.10 archives..."
           mkdir -p mosdns_x86_64 mosdns_aarch64_cortex-a53
@@ -66,6 +81,7 @@ jobs:
 
    
       - name: Create install.sh scripts
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat <<EOF > mosdns_x86_64/install.sh
           #!/bin/sh
@@ -81,11 +97,13 @@ jobs:
           
 
       - name: Move mosdns directories to makeself
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv mosdns_x86_64 makeself/
           mv mosdns_aarch64_cortex-a53 makeself/
 
       - name: Create self-extracting packages
+        if: env.SKIP_BUILD != 'true'
         run: |
           cd makeself
           ./makeself.sh mosdns_x86_64/ mosdns_${{ env.LATEST_TAG }}_x86_64.run "by github action" ./install.sh
@@ -93,10 +111,12 @@ jobs:
           
 
       - name: Check file sizes
+        if: env.SKIP_BUILD != 'true'
         run: |
           ls -lh makeself/mosdns_*.run
 
       - name: Fetch latest release details
+        if: env.SKIP_BUILD != 'true'
         id: fetch_release_details
         run: |
           extra_content="![Github](https://img.shields.io/badge/mosdns.run-123456?logo=github&logoColor=fff&labelColor=yellow&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/${{ env.LATEST_TAG }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
@@ -104,6 +124,7 @@ jobs:
 
     
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.LATEST_TAG }}

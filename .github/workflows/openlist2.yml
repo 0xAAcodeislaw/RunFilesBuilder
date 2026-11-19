@@ -11,6 +11,10 @@ name: Make Openlist2 Run File
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "50 4 * * *"
+
 permissions:
   contents: write
 
@@ -31,10 +35,21 @@ jobs:
           test -n "$latest_tag"
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
           
+      - name: Skip build if openlist2 assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view openlist2 --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "openlist2_${{ env.LATEST_TAG }}_x86_64.run"; then
+            echo "openlist2 ${{ env.LATEST_TAG }} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Clone makeself repository
+        if: env.SKIP_BUILD != 'true'
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest openlist2 files
+        if: env.SKIP_BUILD != 'true'
         run: |
           release_json=$(curl --fail --silent --show-error --location \
             https://api.github.com/repos/sbwml/luci-app-openlist2/releases/latest)
@@ -51,6 +66,7 @@ jobs:
           mv packages_ci openlist2_x86_64
 
       - name: Organize files for aarch64_cortex-a53&x86_64
+        if: env.SKIP_BUILD != 'true'
         run: |
           # 保存当前路径并进入目标目录
           pushd "openlist2_x86_64" >/dev/null || exit 1
@@ -85,6 +101,7 @@ jobs:
           popd >/dev/null
           
       - name: Create install.sh scripts
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat <<EOF > openlist2_x86_64/install.sh
           #!/bin/sh
@@ -99,20 +116,24 @@ jobs:
           cp openlist2_x86_64/install.sh openlist2_aarch64_cortex-a53/install.sh
           
       - name: Move openlist2 directories to makeself
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv openlist2_x86_64 makeself/
           mv openlist2_aarch64_cortex-a53 makeself/
       - name: Create self-extracting packages
+        if: env.SKIP_BUILD != 'true'
         run: |
           cd makeself
           ./makeself.sh openlist2_x86_64/ openlist2_${{ env.LATEST_TAG }}_x86_64.run "by github action" ./install.sh
           ./makeself.sh openlist2_aarch64_cortex-a53/ openlist2_${{ env.LATEST_TAG }}_aarch64_cortex-a53.run "by github action" ./install.sh
           
       - name: Check file sizes
+        if: env.SKIP_BUILD != 'true'
         run: |
           ls -lh makeself/openlist2_*.run
           
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: openlist2

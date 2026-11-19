@@ -11,6 +11,10 @@ name: Make nikki run files 24.10
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "20 4 * * *"
+
 permissions:
   contents: write
 
@@ -32,10 +36,21 @@ jobs:
           
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
+      - name: Skip build if nikki release assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ env.LATEST_TAG }}" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "nikki_${{ env.LATEST_TAG }}_x86_64.run"; then
+            echo "nikki ${{ env.LATEST_TAG }} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Clone makeself repository
+        if: env.SKIP_BUILD != 'true'
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest nikki files
+        if: env.SKIP_BUILD != 'true'
         run: |
           release_json=$(curl --fail --silent --show-error --location \
             https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases/latest)
@@ -49,6 +64,7 @@ jobs:
           tar --one-top-level=nikki_x86_64-openwrt-24.10 -xvzf nikki_x86_64-openwrt-24.10.tar.gz
 
       - name: Organize files for aarch64_cortex-a53&x86_64
+        if: env.SKIP_BUILD != 'true'
         run: |
           mkdir nikki_x86_64 nikki_aarch64_cortex-a53
           cp nikki_x86_64-openwrt-24.10/*.ipk nikki_x86_64/
@@ -88,6 +104,7 @@ jobs:
           
 
       - name: Create install.sh scripts
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat <<EOF > nikki_x86_64/install.sh
           #!/bin/sh
@@ -103,11 +120,13 @@ jobs:
           
 
       - name: Move nikki directories to makeself
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv nikki_x86_64 makeself/
           mv nikki_aarch64_cortex-a53 makeself/
 
       - name: Create self-extracting packages
+        if: env.SKIP_BUILD != 'true'
         run: |
           cd makeself
           ./makeself.sh nikki_x86_64/ nikki_${{ env.LATEST_TAG }}_x86_64.run "by github action" ./install.sh
@@ -115,20 +134,24 @@ jobs:
           
 
       - name: Check file sizes
+        if: env.SKIP_BUILD != 'true'
         run: |
           ls -lh makeself/nikki_*.run
 
       - name: Fetch latest release details
+        if: env.SKIP_BUILD != 'true'
         id: fetch_release_details
         run: |
           extra_content="![Github](https://img.shields.io/badge/nikki.run-123456?logo=github&logoColor=fff&labelColor=yellow&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/${{ env.LATEST_TAG }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
           sed -i "1i$extra_content" "${{ github.workspace }}/info.md"
 
       - name: Print release notes
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat ${{ github.workspace }}/info.md
 
       - name: Generate new tag & release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -139,6 +162,7 @@ jobs:
           body_path: ${{ github.workspace }}/info.md
 
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.LATEST_TAG }}

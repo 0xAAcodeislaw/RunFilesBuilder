@@ -10,6 +10,10 @@ name: Make Argon Theme run files
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "0 6 * * *"
+
 permissions:
   contents: write
 
@@ -37,6 +41,8 @@ jobs:
 
       - name: 🔍 提取版本号并打包
         id: pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p output
 
@@ -51,6 +57,13 @@ jobs:
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+          # 定时构建去重：该版本产物已发布则跳过打包与发布
+          if gh release view "argon-${VERSION}" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "luci-theme-argon-${VERSION}_x86_64.run"; then
+            echo "argon ${VERSION} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
           # 打包两个平台
           for PLATFORM in x86_64 aarch64_generic; do
             makeself "$PLATFORM" "output/luci-theme-argon-${VERSION}_${PLATFORM}.run" \
@@ -58,6 +71,7 @@ jobs:
           done
 
       - name: 📤 上传 .run 文件到 release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: "argon-${{ steps.pack.outputs.version }}"

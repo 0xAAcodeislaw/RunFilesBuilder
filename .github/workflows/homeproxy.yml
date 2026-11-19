@@ -10,6 +10,10 @@ name: Make HomeProxy run files
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "50 5 * * *"
+
 permissions:
   contents: write
 
@@ -38,6 +42,8 @@ jobs:
 
       - name: 🔍 提取版本号并打包
         id: pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p output
 
@@ -54,6 +60,13 @@ jobs:
           echo "打印版本号"
           echo $VERSION
 
+          # 定时构建去重：该版本产物已发布则跳过打包与发布
+          if gh release view "homeproxy-${VERSION%%~*}" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "luci-app-homeproxy-${VERSION%%~*}_x86_64.run"; then
+            echo "homeproxy ${VERSION%%~*} 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
           # 打包各个平台
           for PLATFORM in x86_64 aarch64_generic aarch64_cortex-a53; do
             makeself "$PLATFORM" "output/luci-app-homeproxy-${VERSION}_${PLATFORM}.run" \
@@ -61,6 +74,7 @@ jobs:
           done
 
       - name: Set version name without special chars
+        if: env.SKIP_BUILD != 'true'
         id: clean_version
         run: |
             version="${{ steps.pack.outputs.version }}"
@@ -70,6 +84,7 @@ jobs:
 
 
       - name: 📤 上传 .run 文件到 release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: "homeproxy-${{ steps.clean_version.outputs.cleaned_version }}"

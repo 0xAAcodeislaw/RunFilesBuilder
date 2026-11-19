@@ -11,6 +11,10 @@ name: Make OpenClash run files
 on:
   workflow_dispatch:
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "0 5 * * *"
+
 permissions:
   contents: write
 
@@ -36,14 +40,22 @@ jobs:
 
       - name: Get version info
         id: extract_version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           first_line=$(head -n 1 OpenClash/master/version)
           echo "version=$first_line" >> $GITHUB_ENV
+          if gh release view "$first_line" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "openclash-x86-64-${first_line}.run"; then
+            echo "OpenClash $first_line 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
 
       - name: Create Meta directory for git
+        if: env.SKIP_BUILD != 'true'
         run: mkdir Meta
       
       - name: Checkout core branch to Meta directory
+        if: env.SKIP_BUILD != 'true'
         uses: actions/checkout@v7.0.1
         with:
           repository: vernesong/OpenClash
@@ -51,9 +63,11 @@ jobs:
           ref: core
       
       - name: list all cores on core branch
+        if: env.SKIP_BUILD != 'true'
         run: ls Meta/master/meta
 
       - name: Copy latest meta core to openclash directory
+        if: env.SKIP_BUILD != 'true'
         run: |
           tar -xzvf Meta/master/meta/clash-linux-amd64-v1.tar.gz -C openclash-x86
           tar -xzvf Meta/master/meta/clash-linux-arm64.tar.gz -C openclash-a53
@@ -63,6 +77,7 @@ jobs:
           ls openclash-a53
 
       - name: Create install.sh script save to openclash directory
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat << 'EOF' > openclash-x86/install.sh
           opkg update
@@ -86,11 +101,13 @@ jobs:
           chmod +x openclash-a53/install.sh
 
       - name: Clone makeself repository for self-extracting installer
+        if: env.SKIP_BUILD != 'true'
         run: | 
           git clone https://github.com/megastep/makeself.git
 
       
       - name: move openclash directory to makeself & create run
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv openclash-x86 makeself/
           mv openclash-a53 makeself/
@@ -99,6 +116,7 @@ jobs:
           ./makeself.sh openclash-a53/ openclash-aarch64_cortex-a53-${{ env.version }}.run "by github action" ./install.sh
 
       - name: Generate new tag & release
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -109,6 +127,7 @@ jobs:
           body: "![Github](https://img.shields.io/badge/OpenClash.run-123456?logo=github&logoColor=fff&labelColor=red&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/${{ env.version }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
 
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: ${{ env.version }}

@@ -16,6 +16,10 @@ on:
           required: false
           default: 'packages-24.10'  
 
+  schedule:
+    # 每日定时构建（UTC）；同版本产物已发布时自动跳过
+    - cron: "20 5 * * *"
+
 permissions:
   contents: write
 
@@ -44,10 +48,22 @@ jobs:
           test -n "$latest_tag"
           echo "LATEST_TAG=$latest_tag" >> $GITHUB_ENV
 
+      - name: Skip build if AdGuardHome release assets already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="AdGuardHome_${{ env.LATEST_TAG }}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx "AdGuardHome_${{ env.LATEST_TAG }}_x86_64.run"; then
+            echo "$TAG 已发布，跳过构建"
+            echo "SKIP_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Clone makeself repository
+        if: env.SKIP_BUILD != 'true'
         run: git clone https://github.com/megastep/makeself.git
 
       - name: Download latest AdGuardHome files
+        if: env.SKIP_BUILD != 'true'
         run: |
           curl --fail --location --retry 3 -o AdGuardHome_linux_armv7.tar.gz \
             "https://github.com/AdguardTeam/AdGuardHome/releases/download/${{ env.LATEST_TAG }}/AdGuardHome_linux_armv7.tar.gz"
@@ -68,6 +84,7 @@ jobs:
           ls AdGuardHome_x86_64
 
       - name: Download luci-app-adguardhome IPK files
+        if: env.SKIP_BUILD != 'true'
         run: | 
           ARCHITECTURES=(
           "AdGuardHome_aarch32=https://dl.openwrt.ai/$PACKAGE_VERSION/arm_cortex-a7_neon-vfpv4/kiddin9/"
@@ -94,6 +111,7 @@ jobs:
           done
  
       - name: Create install.sh scripts
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat <<EOF > AdGuardHome_x86_64/install.sh
           #!/bin/sh
@@ -117,12 +135,14 @@ jobs:
           cp AdGuardHome_x86_64/install.sh AdGuardHome_aarch32/install.sh
           
       - name: Move AdGuardHome directories to makeself
+        if: env.SKIP_BUILD != 'true'
         run: |
           mv AdGuardHome_x86_64 makeself/
           mv AdGuardHome_aarch64 makeself/
           mv AdGuardHome_aarch32 makeself/
 
       - name: Create self-extracting packages
+        if: env.SKIP_BUILD != 'true'
         run: |
           cd makeself
           ./makeself.sh AdGuardHome_x86_64/ AdGuardHome_${{ env.LATEST_TAG }}_x86_64.run "by wukongdaily github action" ./install.sh
@@ -130,20 +150,24 @@ jobs:
           ./makeself.sh AdGuardHome_aarch32/ AdGuardHome_${{ env.LATEST_TAG }}_aarch32.run "by wukongdaily github action" ./install.sh
           
       - name: Check file sizes
+        if: env.SKIP_BUILD != 'true'
         run: |
           ls -lh makeself/AdGuardHome_*.run
 
       - name: Fetch latest release details
+        if: env.SKIP_BUILD != 'true'
         id: fetch_release_details
         run: |
           extra_content="![Github](https://img.shields.io/badge/AdGuardHome.run-123456?logo=github&logoColor=fff&labelColor=8470FF&style=for-the-badge) [![Github](https://img.shields.io/badge/国内加速站下载-FC7C0D?logo=github&logoColor=fff&labelColor=000&style=for-the-badge)](https://wkdaily.cpolar.cn/archives/1) ![GitHub Downloads (all assets, specific tag)](https://img.shields.io/github/downloads/wukongdaily/RunFilesBuilder/AdGuardHome_${{ env.LATEST_TAG }}/total?style=for-the-badge&labelColor=black&color=%2325c2a0)"
           sed -i "1i$extra_content" "${{ github.workspace }}/info1.md"
 
       - name: Print release notes
+        if: env.SKIP_BUILD != 'true'
         run: |
           cat ${{ github.workspace }}/info1.md
 
       - name: Upload run files as release assets
+        if: env.SKIP_BUILD != 'true'
         uses: softprops/action-gh-release@v3.0.2
         with:
           tag_name: AdGuardHome_${{ env.LATEST_TAG }}
