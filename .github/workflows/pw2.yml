@@ -42,15 +42,15 @@ jobs:
           release_json=$(curl --fail --silent --show-error --location \
             https://api.github.com/repos/Openwrt-Passwall/openwrt-passwall2/releases/latest)
 
-          # 下载 x86_64 ipk
+          # 下载 x86_64 ipk（上游已把依赖包改名为 packages_ipk_*.zip，正则兼容旧名 passwall_packages_ipk_*，并排除 apk 包）
           x86_url=$(echo "$release_json" | jq -er \
-            '.assets[] | select(.name == "passwall_packages_ipk_x86_64.zip") | .browser_download_url')
+            '.assets[] | select(.name | test("^passwall_?packages_ipk_x86_64\\.zip$")) | .browser_download_url')
           curl --fail --location --retry 3 -o passwall_packages_ipk_x86_64.zip "$x86_url"
 
 
           # 下载 aarch64 ipk
           a53_url=$(echo "$release_json" | jq -er \
-            '.assets[] | select(.name == "passwall_packages_ipk_aarch64_cortex-a53.zip") | .browser_download_url')
+            '.assets[] | select(.name | test("^passwall_?packages_ipk_aarch64_cortex-a53\\.zip$")) | .browser_download_url')
           curl --fail --location --retry 3 -o passwall_packages_ipk_aarch64_cortex-a53.zip "$a53_url"
           unzip -t passwall_packages_ipk_x86_64.zip >/dev/null
           unzip -t passwall_packages_ipk_aarch64_cortex-a53.zip >/dev/null
